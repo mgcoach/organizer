@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mgcoach-organizer-v1-0-0';
+const CACHE_NAME = 'mgcoach-organizer-v1-1-0';
 const ASSETS = ['./', './index.html'];
 
 self.addEventListener('install', e => {

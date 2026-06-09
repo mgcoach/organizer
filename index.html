@@ -698,7 +698,7 @@
     <div class="header-logo">⭐</div>
     <div>
       <div class="header-title">MG COACH</div>
-      <div class="header-subtitle">Organizer v1.0.0</div>
+      <div class="header-subtitle">Organizer v1.1.0</div>
     </div>
   </div>
   <div class="header-meta">
@@ -729,7 +729,7 @@
     </div>
     <div class="stat-card">
       <div class="stat-number" id="statReceita" style="font-size:20px">R$0</div>
-      <div class="stat-label">Receita Mensal</div>
+      <div class="stat-label">Previsto p/ o mês</div>
     </div>
     <div class="stat-card">
       <div class="stat-number text-red" id="statVencidos">0</div>
@@ -805,10 +805,38 @@
 
 <!-- TEMPLATES -->
 <div class="view" id="view-templates">
+  <div style="background:var(--bg2);border:1px solid var(--orange);border-radius:12px;padding:16px;margin-bottom:16px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px">📋 Feedback Semanal em Massa</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.5">
+      Envia o lembrete do formulário para <strong id="massaCount">todos os alunos ativos</strong>. Abre o WhatsApp de cada um em sequência.
+    </div>
+    <button class="btn btn-primary btn-full" id="btnFeedbackMassa">📲 Enviar feedback para todos</button>
+  </div>
   <div style="margin-bottom:14px;font-size:13px;color:var(--text3)">
     Mensagens prontas para WhatsApp. Clique em "Enviar" para abrir o WhatsApp com a mensagem preenchida.
   </div>
   <div id="templatesList"></div>
+</div>
+
+<!-- Modal: Envio em massa -->
+<div class="modal-overlay" id="modalMassa">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title">📋 Feedback Semanal</div>
+      <button class="btn btn-ghost btn-sm btn-icon" id="btnFecharMassa">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--text2);line-height:1.6">
+        Vou abrir o WhatsApp de cada aluno, um por vez. Envie a mensagem e volte aqui para o próximo.
+      </div>
+      <div id="massaProgress" style="font-size:13px;font-weight:700;color:var(--orange)"></div>
+      <div id="massaAtual" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:12px;font-size:14px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnMassaPular">Pular</button>
+      <a class="wa-btn" id="btnMassaAbrir" href="#" target="_blank">📱 Abrir WhatsApp</a>
+    </div>
+  </div>
 </div>
 
 <!-- BACKUP -->
@@ -1292,7 +1320,10 @@ async function renderDashboard() {
   const ativos = alunos.filter(isAtivo);
   const vencidos = alunos.filter(a => getStatus(a) === 'vencido');
   const avencer = alunos.filter(a => getStatus(a) === 'avencer');
-  const receita = ativos.reduce((s, a) => s + (Number(a.valor) || 0), 0);
+  // Receita prevista: alunos cujo vencimento cai no mês atual
+  const mesAtual = today().slice(0, 7);
+  const venceEsteMes = ativos.filter(a => a.vencimento && a.vencimento.slice(0, 7) === mesAtual);
+  const receita = venceEsteMes.reduce((s, a) => s + (Number(a.valor) || 0), 0);
 
   $('statAtivos').textContent = ativos.length;
   $('statReceita').textContent = 'R$ ' + receita.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -1882,8 +1913,10 @@ function renderFinanceiro() {
   const mesSel = sel.value || meses[0].val;
   const pagMes = pagamentos.filter(p => p.data.slice(0, 7) === mesSel);
   const totalMes = pagMes.reduce((s, p) => s + Number(p.valor), 0);
-  const ativos = alunos.filter(isAtivo);
-  const receitaPotencial = ativos.reduce((s, a) => s + (Number(a.valor) || 0), 0);
+  // Potencial do mês: alunos ativos cujo vencimento cai no mês selecionado
+  // (ou seja, quem efetivamente vai pagar/renovar nesse mês)
+  const aVencerNoMes = alunos.filter(a => isAtivo(a) && a.vencimento && a.vencimento.slice(0, 7) === mesSel);
+  const receitaPotencial = aVencerNoMes.reduce((s, a) => s + (Number(a.valor) || 0), 0);
   const vencidos = alunos.filter(a => getStatus(a) === 'vencido').length;
 
   $('finSummary').innerHTML = `
@@ -1893,7 +1926,8 @@ function renderFinanceiro() {
     </div>
     <div class="stat-card">
       <div class="stat-number" style="font-size:20px">R$ ${receitaPotencial.toFixed(2).replace('.', ',')}</div>
-      <div class="stat-label">Potencial mensal</div>
+      <div class="stat-label">Previsto p/ o mês</div>
+      <div class="stat-sub">${aVencerNoMes.length} vencimento${aVencerNoMes.length !== 1 ? 's' : ''}</div>
     </div>
     <div class="stat-card">
       <div class="stat-number">${pagMes.length}</div>
@@ -1973,7 +2007,61 @@ function renderTemplates() {
   if (!alunos.filter(isAtivo).length) {
     list.insertAdjacentHTML('afterbegin', '<div style="color:var(--text3);font-size:13px;margin-bottom:16px">Cadastre alunos ativos para usar as mensagens.</div>');
   }
+  // Atualizar contador do botão de massa
+  const ativosComTel = alunos.filter(a => isAtivo(a) && a.telefone);
+  const cnt = $('massaCount');
+  if (cnt) cnt.textContent = `${ativosComTel.length} aluno${ativosComTel.length !== 1 ? 's' : ''} ativo${ativosComTel.length !== 1 ? 's' : ''} com WhatsApp`;
 }
+
+// ===== ENVIO EM MASSA DE FEEDBACK =====
+let massaFila = [];
+let massaIdx = 0;
+
+function abrirMassaFeedback() {
+  massaFila = alunos.filter(a => isAtivo(a) && a.telefone).sort((a, b) => a.nome.localeCompare(b.nome));
+  if (!massaFila.length) {
+    toast('Nenhum aluno ativo com WhatsApp cadastrado.', 'error');
+    return;
+  }
+  massaIdx = 0;
+  mostrarMassaAtual();
+  openModal('modalMassa');
+}
+
+function mostrarMassaAtual() {
+  if (massaIdx >= massaFila.length) {
+    $('massaProgress').textContent = '✅ Concluído!';
+    $('massaAtual').innerHTML = `<div style="color:var(--green);font-weight:700">Todos os ${massaFila.length} lembretes foram abertos!</div>`;
+    $('btnMassaAbrir').style.display = 'none';
+    $('btnMassaPular').textContent = 'Fechar';
+    return;
+  }
+  const a = massaFila[massaIdx];
+  const tmpl = TEMPLATES.find(t => t.id === 'feedback');
+  const msg = tmpl.body(a);
+  const tel = (a.telefone || '').replace(/\D/g, '');
+  $('massaProgress').textContent = `Aluno ${massaIdx + 1} de ${massaFila.length}`;
+  $('massaAtual').innerHTML = `<strong>${a.nome}</strong><br><span style="font-size:12px;color:var(--text3)">${a.telefone}</span>`;
+  $('btnMassaAbrir').style.display = '';
+  $('btnMassaAbrir').href = `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
+  $('btnMassaPular').textContent = massaIdx === massaFila.length - 1 ? 'Finalizar' : 'Pular';
+}
+
+function avancarMassa() {
+  massaIdx++;
+  mostrarMassaAtual();
+}
+
+$('btnFeedbackMassa').addEventListener('click', abrirMassaFeedback);
+$('btnFecharMassa').addEventListener('click', () => closeModal('modalMassa'));
+$('btnMassaPular').addEventListener('click', () => {
+  if (massaIdx >= massaFila.length) { closeModal('modalMassa'); return; }
+  avancarMassa();
+});
+$('btnMassaAbrir').addEventListener('click', () => {
+  // Após abrir o WhatsApp, avança para o próximo automaticamente
+  setTimeout(avancarMassa, 800);
+});
 
 // ===== RENDER ALL =====
 function renderAll() {
