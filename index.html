@@ -1683,24 +1683,24 @@ $('btnFecharModalWA').addEventListener('click', () => closeModal('modalWA'));
 $('btnCancelarWA').addEventListener('click', () => closeModal('modalWA'));
 
 // ===== MODAL PAGAMENTO =====
+function autoFillPagto() {
+  const al = alunos.find(x => x.id === $('pAluno').value);
+  if (al?.valor) $('pValor').value = al.valor;
+  if (al?.formaPagto) $('pForma').value = al.formaPagto;
+  const mes = new Date().toLocaleString('pt-BR', { month: 'long' });
+  const ano = new Date().getFullYear();
+  $('pRef').value = mes.charAt(0).toUpperCase() + mes.slice(1) + '/' + ano;
+}
+
 function abrirModalPagto(alunoIdPresel = null) {
-  // Preencher select de alunos
   const sel = $('pAluno');
-  sel.innerHTML = alunos.filter(a => a.ativo).sort((a, b) => a.nome.localeCompare(b.nome)).map(a =>
-    `<option value="${a.id}" ${a.id === alunoIdPresel ? 'selected' : ''}>${a.nome}</option>`
-  ).join('');
+  const sorted = [...alunos].sort((a, b) => a.nome.localeCompare(b.nome));
+  sel.innerHTML = sorted.length
+    ? sorted.map(a => `<option value="${a.id}" ${a.id === alunoIdPresel ? 'selected' : ''}>${a.nome}${!a.ativo ? ' (inativo)' : ''}</option>`).join('')
+    : '<option value="">Nenhum aluno cadastrado</option>';
   $('pData').value = today();
-  // Autopreenchimento de valor pelo aluno selecionado
-  const autoFill = () => {
-    const al = alunos.find(x => x.id === $('pAluno').value);
-    if (al?.valor) $('pValor').value = al.valor;
-    if (al?.formaPagto) $('pForma').value = al.formaPagto;
-    const mes = new Date().toLocaleString('pt-BR', { month: 'long' });
-    const ano = new Date().getFullYear();
-    $('pRef').value = mes.charAt(0).toUpperCase() + mes.slice(1) + '/' + ano;
-  };
-  sel.addEventListener('change', autoFill);
-  autoFill();
+  autoFillPagto();
+  $('pAluno').onchange = autoFillPagto;
   $('pObs').value = '';
   $('pRenovar').checked = true;
   openModal('modalPagto');
