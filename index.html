@@ -713,6 +713,7 @@
   <div class="nav-tab" data-view="alunos">👥 Alunos</div>
   <div class="nav-tab" data-view="financeiro">💰 Financeiro</div>
   <div class="nav-tab" data-view="templates">💬 Mensagens</div>
+  <div class="nav-tab" data-view="backup">📦 Backup</div>
 </nav>
 
 <!-- ===================== VIEWS ===================== -->
@@ -738,6 +739,14 @@
       <div class="stat-number text-yellow" id="statAVencer">0</div>
       <div class="stat-label">A Vencer (5d)</div>
     </div>
+  </div>
+
+  <div id="cobrancasHoje" style="display:none;margin-bottom:16px">
+    <div class="section-header" style="margin-top:0">
+      <div class="section-title">📲 Enviar cobranças agora</div>
+      <button class="btn btn-primary btn-sm" id="btnEnviarTodas">Enviar todas →</button>
+    </div>
+    <div id="cobrancasLista"></div>
   </div>
 
   <div class="section-header">
@@ -800,6 +809,50 @@
     Mensagens prontas para WhatsApp. Clique em "Enviar" para abrir o WhatsApp com a mensagem preenchida.
   </div>
   <div id="templatesList"></div>
+</div>
+
+<!-- BACKUP -->
+<div class="view" id="view-backup">
+  <div class="section-header" style="margin-top:0">
+    <div class="section-title">📤 Exportar Backup</div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+    <div style="font-size:14px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+      Exporta <strong>todos os alunos e pagamentos</strong> em um arquivo JSON. Salve em um local seguro (Google Drive, WhatsApp para si mesmo, etc.) para restaurar em outro dispositivo.
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="btnExportar">📥 Baixar Backup Completo</button>
+      <button class="btn btn-ghost" id="btnExportarAlunos">👥 Só Alunos</button>
+    </div>
+    <div id="exportInfo" style="margin-top:10px;font-size:12px;color:var(--text3)"></div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">📥 Importar Backup</div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+    <div style="font-size:14px;color:var(--text2);margin-bottom:4px;line-height:1.6">
+      Importa um arquivo de backup gerado pelo MG COACH Organizer.
+    </div>
+    <div style="font-size:12px;color:var(--yellow);margin-bottom:12px">
+      ⚠️ Alunos com o mesmo ID serão atualizados. Novos serão adicionados. Nada é apagado.
+    </div>
+    <label class="btn btn-ghost" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+      📂 Selecionar arquivo .json
+      <input type="file" id="inputImportar" accept=".json" style="display:none">
+    </label>
+    <div id="importPreview" style="margin-top:12px"></div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">⚠️ Zona de Perigo</div>
+  </div>
+  <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">
+      Apaga todos os dados do dispositivo atual. Faça um backup antes!
+    </div>
+    <button class="btn btn-danger" id="btnLimparTudo">🗑️ Apagar Todos os Dados</button>
+  </div>
 </div>
 
 <!-- ===================== MODAIS ===================== -->
@@ -1140,12 +1193,13 @@ function toast(msg, type = 'success') {
 // ===== STATUS LOGIC =====
 function getStatus(aluno) {
   if (!aluno.ativo) return 'inativo';
-  if (!aluno.vencimento) return 'ativo';
+  if (!aluno.vencimento) return 'pago';
   const d = diffDays(today(), aluno.vencimento);
   if (d < 0) return 'vencido';
   if (d <= 5) return 'avencer';
   return 'pago';
 }
+const isAtivo = a => a.ativo === true;
 const statusLabel = { pago: '✅ Em dia', avencer: '⏳ A vencer', vencido: '🔴 Vencido', inativo: '⚫ Inativo' };
 const statusClass = { pago: 'ok', avencer: 'warning', vencido: 'danger', inativo: 'inactive' };
 
@@ -1235,7 +1289,7 @@ async function loadAll() {
 
 // ===== RENDER DASHBOARD =====
 async function renderDashboard() {
-  const ativos = alunos.filter(a => a.ativo);
+  const ativos = alunos.filter(isAtivo);
   const vencidos = alunos.filter(a => getStatus(a) === 'vencido');
   const avencer = alunos.filter(a => getStatus(a) === 'avencer');
   const receita = ativos.reduce((s, a) => s + (Number(a.valor) || 0), 0);
@@ -1267,7 +1321,7 @@ async function renderDashboard() {
   });
 
   // Feedback atrasado
-  alunos.filter(a => a.ativo).forEach(a => {
+  alunos.filter(isAtivo).forEach(a => {
     if (a.feedbackSemanal) {
       const d = diffDays(a.feedbackSemanal, today());
       if (d >= 8) {
@@ -1277,7 +1331,7 @@ async function renderDashboard() {
         el.addEventListener('click', () => { abrirModalWA(a, 'feedback'); });
         strip.appendChild(el);
       }
-    } else if (a.ativo) {
+    } else if (isAtivo(a)) {
       const el = document.createElement('div');
       el.className = 'alert-item info';
       el.innerHTML = `<div class="alert-icon">📋</div><div class="alert-text"><strong>${a.nome}</strong> — nenhum feedback registrado</div><div class="alert-action">Lembrar →</div>`;
@@ -1303,7 +1357,7 @@ async function renderDashboard() {
   // Aniversários
   const anivDiv = $('dashAniversarios');
   anivDiv.innerHTML = '';
-  const anivs = alunos.filter(a => a.ativo && isBirthdayNear(a.nascimento));
+  const anivs = alunos.filter(a => isAtivo(a) && isBirthdayNear(a.nascimento));
   if (!anivs.length) {
     anivDiv.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">— Nenhum aniversário nos próximos 7 dias —</div>';
   } else {
@@ -1311,9 +1365,61 @@ async function renderDashboard() {
       const d = getBirthdayDiff(a.nascimento);
       const card = buildAlunoCard(a, true);
       const meta = card.querySelector('.aluno-meta');
-      if (meta) meta.textContent = d === 0 ? '🎂 Hoje!' : `🎂 Em ${d} dia${d !== 1 ? 's' : ''}`;
+      if (meta) meta.textContent = d === 0 ? '\u{1F382} Hoje!' : `\u{1F382} Em ${d} dia${d !== 1 ? 's' : ''}`;
       anivDiv.appendChild(card);
     });
+  }
+
+  // ===== COBRANÇAS AUTOMÁTICAS =====
+  // Alunos vencidos HOJE ou já vencidos com telefone
+  const paraCobranca = [...vencidos, ...avencer.filter(a => {
+    const d = diffDays(today(), a.vencimento);
+    return d === 0; // vence hoje
+  })].filter(a => a.telefone);
+
+  const secCob = $('cobrancasHoje');
+  const listCob = $('cobrancasLista');
+  listCob.innerHTML = '';
+
+  if (paraCobranca.length) {
+    secCob.style.display = 'block';
+    paraCobranca.forEach(a => {
+      const st = getStatus(a);
+      const tmplId = st === 'vencido' ? 'vencido' : 'renovacao';
+      const dias = st === 'vencido' ? Math.abs(diffDays(today(), a.vencimento)) : 0;
+      const item = document.createElement('div');
+      item.style.cssText = 'display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;';
+      item.innerHTML = `
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700">${a.nome}</div>
+          <div style="font-size:12px;color:var(--text3)">${st === 'vencido' ? `Vencido há ${dias}d` : 'Vence hoje'} · ${a.vencimento ? fmt(a.vencimento) : ''}</div>
+        </div>
+        <button class="wa-btn" style="font-size:12px;padding:7px 12px" data-id="${a.id}" data-tmpl="${tmplId}">📱 Cobrar</button>
+      `;
+      item.querySelector('.wa-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        const al = alunos.find(x => x.id === e.currentTarget.dataset.id);
+        if (al) abrirModalWA(al, e.currentTarget.dataset.tmpl);
+      });
+      listCob.appendChild(item);
+    });
+
+    // Botão "Enviar todas" — abre WA sequencialmente
+    $('btnEnviarTodas').onclick = () => {
+      if (!paraCobranca.length) return;
+      // Abre o primeiro, usuário vai abrindo os outros em sequência
+      let idx = 0;
+      const abrirProximo = () => {
+        if (idx >= paraCobranca.length) { toast('Todas as cobranças abertas!'); return; }
+        const a = paraCobranca[idx++];
+        const tmplId = getStatus(a) === 'vencido' ? 'vencido' : 'renovacao';
+        abrirModalWA(a, tmplId);
+        // Após fechar o modal, o usuário clica no próximo manualmente
+      };
+      abrirProximo();
+    };
+  } else {
+    secCob.style.display = 'none';
   }
 }
 
@@ -1372,7 +1478,7 @@ function renderAlunos() {
     filtered = filtered.filter(a => a.nome.toLowerCase().includes(q) || (a.telefone || '').includes(q) || (a.instagram || '').toLowerCase().includes(q));
   }
   if (currentFilter !== 'todos') {
-    if (currentFilter === 'ativo') filtered = filtered.filter(a => a.ativo);
+    if (currentFilter === 'ativo') filtered = filtered.filter(isAtivo);
     else if (currentFilter === 'inativo') filtered = filtered.filter(a => !a.ativo);
     else if (currentFilter === 'vencido') filtered = filtered.filter(a => getStatus(a) === 'vencido');
     else if (currentFilter === 'treino') filtered = filtered.filter(a => a.modalidade && a.modalidade.includes('treino'));
@@ -1776,7 +1882,7 @@ function renderFinanceiro() {
   const mesSel = sel.value || meses[0].val;
   const pagMes = pagamentos.filter(p => p.data.slice(0, 7) === mesSel);
   const totalMes = pagMes.reduce((s, p) => s + Number(p.valor), 0);
-  const ativos = alunos.filter(a => a.ativo);
+  const ativos = alunos.filter(isAtivo);
   const receitaPotencial = ativos.reduce((s, a) => s + (Number(a.valor) || 0), 0);
   const vencidos = alunos.filter(a => getStatus(a) === 'vencido').length;
 
@@ -1841,14 +1947,14 @@ function renderTemplates() {
     const card = document.createElement('div');
     card.className = 'template-card';
     // Exemplo com primeiro aluno ativo
-    const ex = alunos.find(a => a.ativo) || { nome: 'Aluno Exemplo', vencimento: today(), valor: '150', modalidade: 'Treino', formaPagto: 'PIX', telefone: '11999999999' };
+    const ex = alunos.find(isAtivo) || { nome: 'Aluno Exemplo', vencimento: today(), valor: '150', modalidade: 'Treino', formaPagto: 'PIX', telefone: '11999999999' };
     const preview = tmpl.body(ex);
     card.innerHTML = `
       <div class="template-title">${tmpl.icon} ${tmpl.title}</div>
       <div class="template-body">${preview}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <select class="tmpl-aluno-sel" style="flex:1;min-width:120px;padding:7px 10px;font-size:12px">
-          ${alunos.filter(a => a.ativo).sort((a, b) => a.nome.localeCompare(b.nome)).map(a =>
+          ${alunos.filter(isAtivo).sort((a, b) => a.nome.localeCompare(b.nome)).map(a =>
             `<option value="${a.id}">${a.nome}</option>`
           ).join('')}
         </select>
@@ -1864,7 +1970,7 @@ function renderTemplates() {
     });
     list.appendChild(card);
   });
-  if (!alunos.filter(a => a.ativo).length) {
+  if (!alunos.filter(isAtivo).length) {
     list.insertAdjacentHTML('afterbegin', '<div style="color:var(--text3);font-size:13px;margin-bottom:16px">Cadastre alunos ativos para usar as mensagens.</div>');
   }
 }
@@ -1889,6 +1995,7 @@ $('navTabs').addEventListener('click', e => {
   if (tab.dataset.view === 'alunos') { voltarLista(); renderAlunos(); }
   if (tab.dataset.view === 'financeiro') renderFinanceiro();
   if (tab.dataset.view === 'templates') renderTemplates();
+  if (tab.dataset.view === 'backup') renderBackup();
 });
 
 // ===== SEARCH & FILTER =====
@@ -1910,6 +2017,131 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target === overlay) overlay.classList.remove('open');
   });
+});
+
+
+// ===== BACKUP & IMPORT =====
+function gerarBackup(apenasAlunos = false) {
+  const payload = {
+    versao: '1.0.0',
+    app: 'mgcoach-organizer',
+    exportadoEm: new Date().toISOString(),
+    alunos,
+    pagamentos: apenasAlunos ? [] : pagamentos
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+function baixarJSON(conteudo, nomeArquivo) {
+  const blob = new Blob([conteudo], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function renderBackup() {
+  const info = $('exportInfo');
+  info.textContent = `${alunos.length} aluno${alunos.length !== 1 ? 's' : ''} · ${pagamentos.length} pagamento${pagamentos.length !== 1 ? 's' : ''} · gerado em ${new Date().toLocaleString('pt-BR')}`;
+  $('importPreview').innerHTML = '';
+}
+
+$('btnExportar').addEventListener('click', () => {
+  const json = gerarBackup(false);
+  const data = new Date().toISOString().slice(0, 10);
+  baixarJSON(json, `mgcoach-backup-${data}.json`);
+  toast('Backup exportado!');
+  renderBackup();
+});
+
+$('btnExportarAlunos').addEventListener('click', () => {
+  const json = gerarBackup(true);
+  const data = new Date().toISOString().slice(0, 10);
+  baixarJSON(json, `mgcoach-alunos-${data}.json`);
+  toast('Alunos exportados!');
+});
+
+$('inputImportar').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const preview = $('importPreview');
+  preview.innerHTML = '<div style="color:var(--text3);font-size:13px">Lendo arquivo...</div>';
+
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    if (data.app !== 'mgcoach-organizer') {
+      preview.innerHTML = '<div style="color:var(--red);font-size:13px">❌ Arquivo inválido — não é um backup do MG COACH Organizer.</div>';
+      return;
+    }
+
+    const alunosNovos = (data.alunos || []).length;
+    const pagNovos = (data.pagamentos || []).length;
+    const dataExport = data.exportadoEm ? new Date(data.exportadoEm).toLocaleString('pt-BR') : '—';
+
+    preview.innerHTML = `
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text)">📦 Arquivo: ${file.name}</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">
+          📅 Exportado em: ${dataExport}<br>
+          👥 Alunos no arquivo: <strong style="color:var(--orange)">${alunosNovos}</strong><br>
+          💰 Pagamentos: <strong style="color:var(--orange)">${pagNovos}</strong>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btnConfirmarImport">✅ Importar agora</button>
+    `;
+
+    $('btnConfirmarImport').addEventListener('click', async () => {
+      confirm(
+        `Importar ${alunosNovos} aluno(s) e ${pagNovos} pagamento(s)? Dados existentes com mesmo ID serão atualizados.`,
+        async () => {
+          setSave('saving');
+          let countA = 0, countP = 0;
+
+          for (const aluno of (data.alunos || [])) {
+            await dbPut('alunos', aluno);
+            countA++;
+          }
+          for (const pag of (data.pagamentos || [])) {
+            await dbPut('pagamentos', pag);
+            countP++;
+          }
+
+          await loadAll();
+          setSave('saved');
+          toast(`Importado: ${countA} aluno(s), ${countP} pagamento(s)!`);
+          renderAll();
+          preview.innerHTML = `<div style="color:var(--green);font-size:13px;font-weight:700">✅ Importação concluída! ${countA} aluno(s) e ${countP} pagamento(s) importados.</div>`;
+          e.target.value = '';
+        }
+      );
+    });
+  } catch (err) {
+    preview.innerHTML = '<div style="color:var(--red);font-size:13px">❌ Erro ao ler o arquivo. Verifique se é um JSON válido.</div>';
+  }
+});
+
+$('btnLimparTudo').addEventListener('click', () => {
+  confirm(
+    'ATENÇÃO: isso apaga TODOS os alunos e pagamentos deste dispositivo. Esta ação não pode ser desfeita. Tem certeza?',
+    async () => {
+      setSave('saving');
+      const tx1 = db.transaction('alunos', 'readwrite');
+      tx1.objectStore('alunos').clear();
+      await new Promise(r => tx1.oncomplete = r);
+      const tx2 = db.transaction('pagamentos', 'readwrite');
+      tx2.objectStore('pagamentos').clear();
+      await new Promise(r => tx2.oncomplete = r);
+      alunos = [];
+      pagamentos = [];
+      setSave('saved');
+      toast('Todos os dados foram apagados.', 'error');
+      renderAll();
+    }
+  );
 });
 
 // ===== SERVICE WORKER =====
