@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#ff6b1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>MG COACH — Organizer</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --orange: #ff6b1a;
+    --orange-dim: #cc5514;
+    --orange-glow: rgba(255,107,26,0.18);
+    --orange-glow2: rgba(255,107,26,0.08);
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #1a1a1a;
+    --bg4: #222222;
+    --border: #2a2a2a;
+    --border2: #333333;
+    --text: #f0f0f0;
+    --text2: #aaaaaa;
+    --text3: #666666;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --blue: #3b82f6;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.5);
+    --transition: 0.2s ease;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ===== HEADER ===== */
+  .app-header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-logo {
+    width: 32px;
+    height: 32px;
+    background: var(--orange);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .header-title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+  .header-subtitle { font-size: 11px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+  .header-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .meta-pill {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .meta-pill span { color: var(--orange); font-weight: 700; }
+
+  /* ===== SAVE INDICATOR ===== */
+  .save-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text3);
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+  .save-dot.unsaved { background: var(--orange); }
+  .save-dot.saving { background: var(--blue); animation: pulse 0.8s infinite; }
+  .save-dot.saved { background: var(--green); }
+  .save-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ===== NAV TABS ===== */
+  .nav-tabs {
+    display: flex;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tab {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all var(--transition);
+    white-space: nowrap;
+    user-select: none;
+  }
+  .nav-tab:hover { color: var(--text2); }
+  .nav-tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+
+  /* ===== VIEWS ===== */
+  .view { display: none; padding: 16px; max-width: 900px; margin: 0 auto; }
+  .view.active { display: block; }
+
+  /* ===== ALERT BANNER ===== */
+  .alert-strip {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .alert-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: opacity var(--transition);
+  }
+  .alert-item:hover { opacity: 0.85; }
+  .alert-item.danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #fca5a5; }
+  .alert-item.warning { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #fcd34d; }
+  .alert-item.info { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: #93c5fd; }
+  .alert-icon { font-size: 16px; flex-shrink: 0; }
+  .alert-text { flex: 1; }
+  .alert-action {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.8;
+  }
+
+  /* ===== DASHBOARD STATS ===== */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  @media (min-width: 600px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-card.highlight { border-color: var(--orange); background: var(--orange-glow2); }
+  .stat-number { font-size: 28px; font-weight: 800; color: var(--orange); line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--text3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* ===== SECTION HEADER ===== */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    margin-top: 20px;
+  }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+  .section-header:first-child { margin-top: 0; }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all var(--transition);
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--orange); color: #fff; }
+  .btn-primary:hover { background: var(--orange-dim); }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+  .btn-ghost:hover { border-color: var(--orange); color: var(--orange); }
+  .btn-danger { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .btn-danger:hover { background: rgba(239,68,68,0.25); }
+  .btn-green { background: rgba(34,197,94,0.15); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+  .btn-green:hover { background: rgba(34,197,94,0.25); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-icon { padding: 6px; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* ===== CARDS / LIST ===== */
+  .aluno-list { display: flex; flex-direction: column; gap: 10px; }
+  .aluno-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color var(--transition), background var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+  .aluno-card:hover { border-color: var(--border2); background: var(--bg3); }
+  .aluno-card.danger { border-left: 3px solid var(--red); }
+  .aluno-card.warning { border-left: 3px solid var(--yellow); }
+  .aluno-card.ok { border-left: 3px solid var(--green); }
+  .aluno-card.inactive { border-left: 3px solid var(--text3); opacity: 0.6; }
+
+  .aluno-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .aluno-avatar {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--bg4);
+    border: 2px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--orange);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .aluno-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .aluno-info { flex: 1; min-width: 0; }
+  .aluno-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .aluno-meta { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .aluno-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+  .tag.orange { background: var(--orange-glow); border-color: var(--orange); color: var(--orange); }
+  .tag.green { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.3); color: var(--green); }
+  .tag.red { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--red); }
+  .tag.yellow { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: var(--yellow); }
+  .tag.blue { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: var(--blue); }
+
+  .aluno-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  /* ===== STATUS BADGE ===== */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .status-badge.pago { background: rgba(34,197,94,0.15); color: var(--green); }
+  .status-badge.avencer { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .status-badge.vencido { background: rgba(239,68,68,0.15); color: var(--red); animation: blink 1.5s infinite; }
+  .status-badge.inativo { background: var(--bg3); color: var(--text3); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  @media (min-width: 600px) {
+    .modal-overlay { align-items: center; }
+  }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 560px;
+    max-height: 92dvh;
+    overflow-y: auto;
+    transform: translateY(40px);
+    transition: transform 0.3s ease;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  @media (min-width: 600px) {
+    .modal { border-radius: 20px; transform: scale(0.95); max-height: 88dvh; }
+  }
+  .modal-overlay.open .modal { transform: translateY(0) scale(1); }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg2);
+    z-index: 1;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg2);
+  }
+
+  /* ===== FORM ===== */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  label { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+  input, select, textarea {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 10px 12px;
+    transition: border-color var(--transition);
+    width: 100%;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--orange); }
+  textarea { resize: vertical; min-height: 80px; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
+  input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--orange);
+    cursor: pointer;
+    padding: 0;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .checkbox-row label { text-transform: none; font-size: 14px; font-weight: 400; color: var(--text); cursor: pointer; letter-spacing: 0; }
+
+  /* ===== DIVIDER ===== */
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--orange);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+
+  /* ===== DETAIL VIEW ===== */
+  .detail-hero {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .detail-avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: var(--bg4);
+    border: 3px solid var(--orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--orange);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .detail-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .detail-name { font-size: 20px; font-weight: 800; }
+  .detail-sub { font-size: 13px; color: var(--text3); margin-top: 3px; }
+  .detail-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  @media (min-width: 500px) { .info-grid { grid-template-columns: repeat(3, 1fr); } }
+  .info-block {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+  .info-block-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-block-value { font-size: 14px; font-weight: 700; margin-top: 3px; }
+
+  /* ===== HISTORICO PAGAMENTOS ===== */
+  .pagto-list { display: flex; flex-direction: column; gap: 8px; }
+  .pagto-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+  }
+  .pagto-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .pagto-info { flex: 1; }
+  .pagto-date { font-size: 13px; font-weight: 600; }
+  .pagto-ref { font-size: 12px; color: var(--text3); }
+  .pagto-valor { font-size: 14px; font-weight: 700; color: var(--green); }
+
+  /* ===== ACOMPANHAMENTO CHECKLIST ===== */
+  .check-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  @media (min-width: 500px) { .check-grid { grid-template-columns: repeat(3, 1fr); } }
+  .check-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all var(--transition);
+    position: relative;
+  }
+  .check-item:hover { border-color: var(--orange); }
+  .check-item.atrasado { border-color: rgba(239,68,68,0.4); }
+  .check-item-icon { font-size: 20px; margin-bottom: 4px; }
+  .check-item-label { font-size: 12px; color: var(--text2); font-weight: 600; }
+  .check-item-date { font-size: 11px; margin-top: 4px; font-weight: 700; }
+  .check-item-date.ok { color: var(--green); }
+  .check-item-date.warning { color: var(--yellow); }
+  .check-item-date.danger { color: var(--red); }
+  .check-item-date.none { color: var(--text3); }
+  .check-btn {
+    position: absolute;
+    top: 6px; right: 6px;
+    background: var(--orange);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+  .check-item:hover .check-btn { opacity: 1; }
+
+  /* ===== NOTAS ===== */
+  .nota-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .nota-text { font-size: 14px; color: var(--text2); white-space: pre-wrap; line-height: 1.6; }
+  .nota-empty { color: var(--text3); font-style: italic; }
+
+  /* ===== FINANCEIRO VIEW ===== */
+  .fin-summary {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  @media (min-width: 600px) { .fin-summary { grid-template-columns: repeat(4, 1fr); } }
+
+  /* ===== SEARCH / FILTER ===== */
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .search-bar input { flex: 1; }
+  .filter-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .filter-chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all var(--transition);
+    user-select: none;
+  }
+  .filter-chip.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text3);
+  }
+  .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state-title { font-size: 16px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+  .empty-state-text { font-size: 14px; margin-bottom: 20px; }
+
+  /* ===== TOAST ===== */
+  .toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    pointer-events: all;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { border-color: var(--green); color: var(--green); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+  .toast.info { border-color: var(--blue); color: var(--blue); }
+
+  /* ===== WHATSAPP BTN ===== */
+  .wa-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #25d366;
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background var(--transition);
+  }
+  .wa-btn:hover { background: #1eb358; }
+
+  /* ===== MISC ===== */
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--orange);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 14px;
+    width: fit-content;
+  }
+  .back-btn:hover { opacity: 0.8; }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .text-green { color: var(--green); }
+  .text-red { color: var(--red); }
+  .text-yellow { color: var(--yellow); }
+  .text-orange { color: var(--orange); }
+  .text-dim { color: var(--text3); }
+  .fw-700 { font-weight: 700; }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+
+  /* ===== PROGRESS BAR ===== */
+  .progress-bar-wrap {
+    height: 4px;
+    background: var(--bg4);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* ===== TEMPLATES VIEW ===== */
+  .template-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .template-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .template-body {
+    font-size: 13px;
+    color: var(--text2);
+    white-space: pre-wrap;
+    line-height: 1.6;
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+
+  /* ===== ANIVERSARIO BADGE ===== */
+  .birthday-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(251,191,36,0.15);
+    border: 1px solid rgba(251,191,36,0.4);
+    border-radius: 20px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: #fcd34d;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="header-brand">
+    <div class="header-logo">⭐</div>
+    <div>
+      <div class="header-title">MG COACH</div>
+      <div class="header-subtitle">Organizer v1.0.0</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="meta-pill" id="headerStats"><span id="hAtivos">0</span> ativos</div>
+    <div class="save-dot" id="saveDot" title="Salvo"></div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav-tabs" id="navTabs">
+  <div class="nav-tab active" data-view="dashboard">📊 Dashboard</div>
+  <div class="nav-tab" data-view="alunos">👥 Alunos</div>
+  <div class="nav-tab" data-view="financeiro">💰 Financeiro</div>
+  <div class="nav-tab" data-view="templates">💬 Mensagens</div>
+</nav>
+
+<!-- ===================== VIEWS ===================== -->
+
+<!-- DASHBOARD -->
+<div class="view active" id="view-dashboard">
+  <div id="alertStrip" class="alert-strip"></div>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card highlight">
+      <div class="stat-number" id="statAtivos">0</div>
+      <div class="stat-label">Alunos Ativos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="statReceita" style="font-size:20px">R$0</div>
+      <div class="stat-label">Receita Mensal</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number text-red" id="statVencidos">0</div>
+      <div class="stat-label">Vencidos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number text-yellow" id="statAVencer">0</div>
+      <div class="stat-label">A Vencer (5d)</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">🔴 Requer atenção</div>
+  </div>
+  <div id="dashAtencao" class="aluno-list"></div>
+
+  <div class="section-header mt-12">
+    <div class="section-title">🎂 Aniversários em breve</div>
+  </div>
+  <div id="dashAniversarios" class="aluno-list"></div>
+</div>
+
+<!-- ALUNOS -->
+<div class="view" id="view-alunos">
+  <div id="viewAlunosList">
+    <div class="search-bar">
+      <input type="search" id="searchInput" placeholder="🔍  Buscar aluno..." autocomplete="off">
+      <button class="btn btn-primary" id="btnNovoAluno">+ Novo</button>
+    </div>
+    <div class="filter-chips">
+      <div class="filter-chip active" data-filter="todos">Todos</div>
+      <div class="filter-chip" data-filter="ativo">Ativos</div>
+      <div class="filter-chip" data-filter="vencido">Vencidos</div>
+      <div class="filter-chip" data-filter="inativo">Inativos</div>
+      <div class="filter-chip" data-filter="treino">Treino</div>
+      <div class="filter-chip" data-filter="dieta">Dieta</div>
+    </div>
+    <div id="alunoList" class="aluno-list"></div>
+  </div>
+
+  <!-- DETALHE ALUNO -->
+  <div id="viewAlunoDetalhe" style="display:none">
+    <div class="back-btn" id="btnVoltarLista">← Voltar</div>
+    <div id="detalheContent"></div>
+  </div>
+</div>
+
+<!-- FINANCEIRO -->
+<div class="view" id="view-financeiro">
+  <div class="section-header" style="margin-top:0">
+    <div class="section-title">Resumo do mês</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="finMes" style="width:auto;padding:6px 10px;font-size:12px"></select>
+    </div>
+  </div>
+
+  <div class="fin-summary" id="finSummary"></div>
+
+  <div class="section-header">
+    <div class="section-title">Histórico de Pagamentos</div>
+    <button class="btn btn-primary btn-sm" id="btnRegPagto">+ Registrar</button>
+  </div>
+  <div id="pagtoList" class="pagto-list"></div>
+</div>
+
+<!-- TEMPLATES -->
+<div class="view" id="view-templates">
+  <div style="margin-bottom:14px;font-size:13px;color:var(--text3)">
+    Mensagens prontas para WhatsApp. Clique em "Enviar" para abrir o WhatsApp com a mensagem preenchida.
+  </div>
+  <div id="templatesList"></div>
+</div>
+
+<!-- ===================== MODAIS ===================== -->
+
+<!-- Modal: Cadastro Aluno -->
+<div class="modal-overlay" id="modalAluno">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalAlunoTitle">Novo Aluno</div>
+      <button class="btn btn-ghost btn-sm btn-icon" id="btnFecharModalAluno">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-label">Dados Pessoais</div>
+      <div class="field">
+        <label>Nome completo *</label>
+        <input type="text" id="fNome" placeholder="Nome do aluno" autocomplete="off">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>WhatsApp *</label>
+          <input type="tel" id="fTelefone" placeholder="(11) 99999-9999">
+        </div>
+        <div class="field">
+          <label>Instagram</label>
+          <input type="text" id="fInstagram" placeholder="@usuario">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Data de Nascimento</label>
+          <input type="date" id="fNascimento">
+        </div>
+        <div class="field">
+          <label>Objetivo</label>
+          <select id="fObjetivo">
+            <option value="">— Selecionar —</option>
+            <option>Hipertrofia</option>
+            <option>Emagrecimento</option>
+            <option>Recomposição corporal</option>
+            <option>Saúde geral</option>
+            <option>Performance</option>
+            <option>Outro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-label">Plano e Serviços</div>
+      <div class="field">
+        <label>Modalidade *</label>
+        <select id="fModalidade">
+          <option value="">— Selecionar —</option>
+          <option value="treino">Treino</option>
+          <option value="dieta">Dieta</option>
+          <option value="treino+dieta">Treino + Dieta</option>
+          <option value="online">Online completo</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Valor do Plano (R$)</label>
+          <input type="number" id="fValor" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="field">
+          <label>Periodicidade</label>
+          <select id="fPeriodicidade">
+            <option value="mensal">Mensal</option>
+            <option value="bimestral">Bimestral</option>
+            <option value="trimestral">Trimestral</option>
+            <option value="semestral">Semestral</option>
+            <option value="anual">Anual</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Data de Início</label>
+          <input type="date" id="fInicio">
+        </div>
+        <div class="field">
+          <label>Vencimento</label>
+          <input type="date" id="fVencimento">
+        </div>
+      </div>
+      <div class="field">
+        <label>Forma de Pagamento</label>
+        <select id="fFormaPagto">
+          <option value="">— Selecionar —</option>
+          <option>PIX</option>
+          <option>Cartão de crédito</option>
+          <option>Boleto</option>
+          <option>Dinheiro</option>
+          <option>Transferência</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-label">Status</div>
+      <div class="field">
+        <div class="checkbox-row">
+          <input type="checkbox" id="fAtivo" checked>
+          <label for="fAtivo">Aluno ativo</label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-label">Observações</div>
+      <div class="field">
+        <label>Notas (lesões, restrições, metas, histórico...)</label>
+        <textarea id="fNotas" rows="4" placeholder="Ex: Lesão no joelho direito — evitar agachamento bilateral pesado..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnCancelarAluno">Cancelar</button>
+      <button class="btn btn-primary" id="btnSalvarAluno">Salvar Aluno</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Registrar Pagamento -->
+<div class="modal-overlay" id="modalPagto">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Registrar Pagamento</div>
+      <button class="btn btn-ghost btn-sm btn-icon" id="btnFecharModalPagto">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Aluno</label>
+        <select id="pAluno"></select>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Data do Pagamento *</label>
+          <input type="date" id="pData">
+        </div>
+        <div class="field">
+          <label>Valor (R$) *</label>
+          <input type="number" id="pValor" placeholder="0.00" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Referência</label>
+          <input type="text" id="pRef" placeholder="Ex: Junho/2025">
+        </div>
+        <div class="field">
+          <label>Forma</label>
+          <select id="pForma">
+            <option>PIX</option>
+            <option>Cartão de crédito</option>
+            <option>Boleto</option>
+            <option>Dinheiro</option>
+            <option>Transferência</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Observações</label>
+        <input type="text" id="pObs" placeholder="Opcional">
+      </div>
+      <div class="field">
+        <div class="checkbox-row">
+          <input type="checkbox" id="pRenovar" checked>
+          <label for="pRenovar">Renovar vencimento automaticamente</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnCancelarPagto">Cancelar</button>
+      <button class="btn btn-primary" id="btnSalvarPagto">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Atualizar Acompanhamento -->
+<div class="modal-overlay" id="modalAcomp">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalAcompTitle">Atualizar</div>
+      <button class="btn btn-ghost btn-sm btn-icon" id="btnFecharModalAcomp">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Data da atualização</label>
+        <input type="date" id="acompData">
+      </div>
+      <div class="field">
+        <label>Observação (opcional)</label>
+        <input type="text" id="acompObs" placeholder="Ex: Treino A/B atualizado, foco em volume">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnCancelarAcomp">Cancelar</button>
+      <button class="btn btn-primary" id="btnSalvarAcomp">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Enviar WhatsApp -->
+<div class="modal-overlay" id="modalWA">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalWATitle">Enviar Mensagem</div>
+      <button class="btn btn-ghost btn-sm btn-icon" id="btnFecharModalWA">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Mensagem</label>
+        <textarea id="waMsg" rows="8" style="font-size:13px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnCancelarWA">Fechar</button>
+      <a class="wa-btn" id="btnEnviarWA" href="#" target="_blank">📱 Abrir WhatsApp</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar exclusão -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">Confirmar</div>
+    </div>
+    <div class="modal-body">
+      <div id="confirmMsg" style="font-size:14px;color:var(--text2)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnConfirmNao">Cancelar</button>
+      <button class="btn btn-danger" id="btnConfirmSim">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===== UTILS =====
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+const fmt = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+const fmtMoeda = v => v ? 'R$ ' + Number(v).toFixed(2).replace('.', ',') : '—';
+const diffDays = (a, b) => {
+  const d1 = new Date(a + 'T12:00:00'), d2 = new Date(b + 'T12:00:00');
+  return Math.round((d2 - d1) / 86400000);
+};
+const iniciais = nome => nome ? nome.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : '?';
+const isBirthdayNear = (dtNasc) => {
+  if (!dtNasc) return false;
+  const now = new Date();
+  const [ano, mes, dia] = dtNasc.split('-').map(Number);
+  const thisYear = new Date(now.getFullYear(), mes - 1, dia);
+  const diff = (thisYear - now) / 86400000;
+  return diff >= 0 && diff <= 7;
+};
+const getBirthdayDiff = (dtNasc) => {
+  if (!dtNasc) return null;
+  const now = new Date();
+  const [, mes, dia] = dtNasc.split('-').map(Number);
+  const thisYear = new Date(now.getFullYear(), mes - 1, dia);
+  const diff = (thisYear - now) / 86400000;
+  if (diff >= 0 && diff <= 7) return Math.round(diff);
+  return null;
+};
+
+// ===== DB =====
+let db;
+function initDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('mgcoach_organizer', 2);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('alunos')) {
+        const s = d.createObjectStore('alunos', { keyPath: 'id' });
+        s.createIndex('nome', 'nome');
+      }
+      if (!d.objectStoreNames.contains('pagamentos')) {
+        const p = d.createObjectStore('pagamentos', { keyPath: 'id' });
+        p.createIndex('alunoId', 'alunoId');
+        p.createIndex('data', 'data');
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(); };
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbAll(store) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+function dbPut(store, obj) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(obj);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+function dbDelete(store, id) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(id);
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
+  });
+}
+
+// ===== SAVE INDICATOR =====
+let saveTimer;
+function setSave(st) {
+  const dot = $('saveDot');
+  dot.className = 'save-dot ' + st;
+  const titles = { unsaved: '🟠 Não salvo', saving: '🔵 Salvando...', saved: '🟢 Salvo', error: '🔴 Erro' };
+  dot.title = titles[st] || '';
+}
+
+// ===== TOAST =====
+function toast(msg, type = 'success') {
+  const c = $('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  requestAnimationFrame(() => { t.classList.add('show'); });
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 300);
+  }, 2800);
+}
+
+// ===== STATUS LOGIC =====
+function getStatus(aluno) {
+  if (!aluno.ativo) return 'inativo';
+  if (!aluno.vencimento) return 'ativo';
+  const d = diffDays(today(), aluno.vencimento);
+  if (d < 0) return 'vencido';
+  if (d <= 5) return 'avencer';
+  return 'pago';
+}
+const statusLabel = { pago: '✅ Em dia', avencer: '⏳ A vencer', vencido: '🔴 Vencido', inativo: '⚫ Inativo' };
+const statusClass = { pago: 'ok', avencer: 'warning', vencido: 'danger', inativo: 'inactive' };
+
+// ===== ACOMPANHAMENTO TIPOS =====
+const ACOMP_TIPOS = [
+  { key: 'atualizacaoTreino',   icon: '🏋️', label: 'Treino',         dias: 30 },
+  { key: 'feedbackSemanal',     icon: '📋', label: 'Feedback',        dias: 7  },
+  { key: 'atualizacaoDieta',    icon: '🥗', label: 'Dieta',           dias: 30 },
+  { key: 'avaliacaoFisica',     icon: '📏', label: 'Avaliação',       dias: 45 },
+  { key: 'checkin',             icon: '💬', label: 'Check-in',        dias: 14 },
+  { key: 'fotosProgresso',      icon: '📸', label: 'Fotos',           dias: 30 },
+];
+
+// ===== MODAL HELPERS =====
+function openModal(id) { $(id).classList.add('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
+
+// ===== CONFIRM DIALOG =====
+let confirmCb = null;
+function confirm(msg, cb) {
+  $('confirmMsg').textContent = msg;
+  confirmCb = cb;
+  openModal('modalConfirm');
+}
+$('btnConfirmSim').addEventListener('click', () => {
+  closeModal('modalConfirm');
+  if (confirmCb) { confirmCb(); confirmCb = null; }
+});
+$('btnConfirmNao').addEventListener('click', () => closeModal('modalConfirm'));
+
+// ===== TEMPLATES DE MENSAGEM =====
+const TEMPLATES = [
+  {
+    id: 'renovacao',
+    icon: '💳',
+    title: 'Renovação de Plano',
+    body: (a) => `Olá, ${a.nome.split(' ')[0]}! 👋\n\nPassando pra avisar que seu plano *${a.modalidade || 'de consultoria'}* com a *MG COACH* vence em breve (${fmt(a.vencimento)}).\n\nPara garantir a continuidade do seu acompanhamento e não perder seu progresso, farei a renovação mediante pagamento de *${fmtMoeda(a.valor)}* via ${a.formaPagto || 'PIX'}.\n\nQualquer dúvida, pode falar comigo! 💪\n\n— Matheus | MG COACH`
+  },
+  {
+    id: 'vencido',
+    icon: '⏰',
+    title: 'Plano Vencido',
+    body: (a) => `Olá, ${a.nome.split(' ')[0]}! Tudo bem?\n\nNotei que seu plano com a *MG COACH* venceu em ${fmt(a.vencimento)}. 😊\n\nSe quiser retomar o acompanhamento, fico à disposição! Estamos com ótimos resultados e adoraria continuar trabalhando contigo.\n\nValor para renovação: *${fmtMoeda(a.valor)}*\n\n— Matheus | MG COACH`
+  },
+  {
+    id: 'feedback',
+    icon: '📋',
+    title: 'Lembrete de Feedback Semanal',
+    body: (a) => `Oi, ${a.nome.split(' ')[0]}! 👊\n\nTá na hora do seu *feedback semanal*! Me conta como foram os treinos essa semana:\n\n• Conseguiu fazer todos os treinos?\n• Como está a dieta/alimentação?\n• Sentiu alguma dor ou desconforto?\n• Alguma dúvida ou ajuste necessário?\n\nManda o formulário ou me responde aqui mesmo. Seu progresso depende disso! 💥\n\n— Matheus | MG COACH`
+  },
+  {
+    id: 'checkin',
+    icon: '💬',
+    title: 'Check-in Motivacional',
+    body: (a) => `E aí, ${a.nome.split(' ')[0]}! Como você está? 💪\n\nPassei para dar um oi e saber como andam os treinos. Qualquer coisa que precisar — dúvida de exercício, ajuste de dieta, ou só dar um desabafo — pode contar comigo!\n\nContinua firme! Os resultados são consequência da consistência. 🔥\n\n— Matheus | MG COACH`
+  },
+  {
+    id: 'aniversario',
+    icon: '🎂',
+    title: 'Parabéns de Aniversário',
+    body: (a) => `Feliz aniversário, ${a.nome.split(' ')[0]}! 🎂🎉\n\nQue esse novo ano de vida seja repleto de saúde, conquistas e muito resultado! Fico muito feliz em fazer parte dessa sua jornada. 💪\n\nUm abraço!\n\n— Matheus | MG COACH`
+  },
+  {
+    id: 'boasvindas',
+    icon: '🌟',
+    title: 'Boas-vindas ao Plano',
+    body: (a) => `Bem-vindo(a) à *MG COACH*, ${a.nome.split(' ')[0]}! 🌟\n\nFico muito feliz em ter você no time! Daqui pra frente vamos trabalhar juntos para atingir seus objetivos com ciência, dedicação e consistência.\n\nEm breve você receberá seu *${a.modalidade || 'plano'}*. Qualquer dúvida pode me chamar.\n\nBora transformar? 💪🔥\n\n— Matheus | MG COACH`
+  }
+];
+
+// ===== CURRENT STATE =====
+let alunos = [];
+let pagamentos = [];
+let currentFilter = 'todos';
+let currentSearch = '';
+let editAlunoId = null;
+let currentAlunoId = null;
+let currentAcompKey = null;
+let currentAcompAlunoId = null;
+let waCurrentAluno = null;
+
+// ===== LOAD DATA =====
+async function loadAll() {
+  alunos = await dbAll('alunos');
+  pagamentos = await dbAll('pagamentos');
+}
+
+// ===== RENDER DASHBOARD =====
+async function renderDashboard() {
+  const ativos = alunos.filter(a => a.ativo);
+  const vencidos = alunos.filter(a => getStatus(a) === 'vencido');
+  const avencer = alunos.filter(a => getStatus(a) === 'avencer');
+  const receita = ativos.reduce((s, a) => s + (Number(a.valor) || 0), 0);
+
+  $('statAtivos').textContent = ativos.length;
+  $('statReceita').textContent = 'R$ ' + receita.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  $('statVencidos').textContent = vencidos.length;
+  $('statAVencer').textContent = avencer.length;
+  $('hAtivos').textContent = ativos.length;
+
+  // Alertas
+  const strip = $('alertStrip');
+  strip.innerHTML = '';
+  vencidos.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'alert-item danger';
+    const dias = Math.abs(diffDays(today(), a.vencimento));
+    el.innerHTML = `<div class="alert-icon">🔴</div><div class="alert-text"><strong>${a.nome}</strong> — vencido há ${dias} dia${dias !== 1 ? 's' : ''}</div><div class="alert-action">Cobrar →</div>`;
+    el.addEventListener('click', () => { abrirModalWA(a, 'vencido'); });
+    strip.appendChild(el);
+  });
+  avencer.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'alert-item warning';
+    const dias = diffDays(today(), a.vencimento);
+    el.innerHTML = `<div class="alert-icon">⏳</div><div class="alert-text"><strong>${a.nome}</strong> — vence em ${dias} dia${dias !== 1 ? 's' : ''}</div><div class="alert-action">Avisar →</div>`;
+    el.addEventListener('click', () => { abrirModalWA(a, 'renovacao'); });
+    strip.appendChild(el);
+  });
+
+  // Feedback atrasado
+  alunos.filter(a => a.ativo).forEach(a => {
+    if (a.feedbackSemanal) {
+      const d = diffDays(a.feedbackSemanal, today());
+      if (d >= 8) {
+        const el = document.createElement('div');
+        el.className = 'alert-item info';
+        el.innerHTML = `<div class="alert-icon">📋</div><div class="alert-text"><strong>${a.nome}</strong> — feedback há ${d} dias</div><div class="alert-action">Lembrar →</div>`;
+        el.addEventListener('click', () => { abrirModalWA(a, 'feedback'); });
+        strip.appendChild(el);
+      }
+    } else if (a.ativo) {
+      const el = document.createElement('div');
+      el.className = 'alert-item info';
+      el.innerHTML = `<div class="alert-icon">📋</div><div class="alert-text"><strong>${a.nome}</strong> — nenhum feedback registrado</div><div class="alert-action">Lembrar →</div>`;
+      el.addEventListener('click', () => { abrirModalWA(a, 'feedback'); });
+      strip.appendChild(el);
+    }
+  });
+
+  if (!strip.children.length) {
+    strip.innerHTML = '<div class="alert-item" style="border-color:var(--border);color:var(--green)"><div class="alert-icon">✅</div><div class="alert-text">Tudo em dia! Nenhum alerta no momento.</div></div>';
+  }
+
+  // Alunos que precisam de atenção (vencido + a vencer)
+  const atencao = [...vencidos, ...avencer].slice(0, 5);
+  const atDiv = $('dashAtencao');
+  atDiv.innerHTML = '';
+  if (!atencao.length) {
+    atDiv.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">— Nenhum aluno com vencimento próximo —</div>';
+  } else {
+    atencao.forEach(a => atDiv.appendChild(buildAlunoCard(a, true)));
+  }
+
+  // Aniversários
+  const anivDiv = $('dashAniversarios');
+  anivDiv.innerHTML = '';
+  const anivs = alunos.filter(a => a.ativo && isBirthdayNear(a.nascimento));
+  if (!anivs.length) {
+    anivDiv.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">— Nenhum aniversário nos próximos 7 dias —</div>';
+  } else {
+    anivs.forEach(a => {
+      const d = getBirthdayDiff(a.nascimento);
+      const card = buildAlunoCard(a, true);
+      const meta = card.querySelector('.aluno-meta');
+      if (meta) meta.textContent = d === 0 ? '🎂 Hoje!' : `🎂 Em ${d} dia${d !== 1 ? 's' : ''}`;
+      anivDiv.appendChild(card);
+    });
+  }
+}
+
+// ===== BUILD ALUNO CARD =====
+function buildAlunoCard(a, compact = false) {
+  const st = getStatus(a);
+  const card = document.createElement('div');
+  card.className = 'aluno-card ' + statusClass[st];
+  card.dataset.id = a.id;
+
+  const tags = [];
+  if (a.modalidade) tags.push(`<span class="tag orange">${a.modalidade}</span>`);
+  tags.push(`<span class="status-badge ${st}">${statusLabel[st]}</span>`);
+  if (isBirthdayNear(a.nascimento)) tags.push(`<span class="birthday-badge">🎂 Aniversário</span>`);
+
+  const vencStr = a.vencimento ? `Vence ${fmt(a.vencimento)}` : 'Sem vencimento';
+  const valStr = a.valor ? ` · ${fmtMoeda(a.valor)}` : '';
+
+  card.innerHTML = `
+    <div class="aluno-row">
+      <div class="aluno-avatar">${iniciais(a.nome)}</div>
+      <div class="aluno-info">
+        <div class="aluno-name">${a.nome}</div>
+        <div class="aluno-meta">${a.telefone || '—'} · ${vencStr}${valStr}</div>
+        ${!compact ? `<div class="aluno-tags">${tags.join('')}</div>` : ''}
+      </div>
+      <div class="aluno-actions">
+        ${a.telefone ? `<button class="btn btn-ghost btn-sm btn-icon wa-card-btn" data-id="${a.id}" title="WhatsApp">📱</button>` : ''}
+        <button class="btn btn-ghost btn-sm btn-icon edit-btn" data-id="${a.id}" title="Editar">✏️</button>
+      </div>
+    </div>
+    ${compact ? '' : ''}
+  `;
+
+  card.querySelector('.aluno-info').addEventListener('click', () => abrirDetalhe(a.id));
+  card.querySelectorAll('.wa-card-btn').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const al = alunos.find(x => x.id == btn.dataset.id);
+    const tmpl = getStatus(al) === 'vencido' ? 'vencido' : getStatus(al) === 'avencer' ? 'renovacao' : 'checkin';
+    abrirModalWA(al, tmpl);
+  }));
+  card.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    abrirModalAluno(alunos.find(x => x.id == btn.dataset.id));
+  }));
+  return card;
+}
+
+// ===== RENDER ALUNOS =====
+function renderAlunos() {
+  const list = $('alunoList');
+  list.innerHTML = '';
+  let filtered = alunos;
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    filtered = filtered.filter(a => a.nome.toLowerCase().includes(q) || (a.telefone || '').includes(q) || (a.instagram || '').toLowerCase().includes(q));
+  }
+  if (currentFilter !== 'todos') {
+    if (currentFilter === 'ativo') filtered = filtered.filter(a => a.ativo);
+    else if (currentFilter === 'inativo') filtered = filtered.filter(a => !a.ativo);
+    else if (currentFilter === 'vencido') filtered = filtered.filter(a => getStatus(a) === 'vencido');
+    else if (currentFilter === 'treino') filtered = filtered.filter(a => a.modalidade && a.modalidade.includes('treino'));
+    else if (currentFilter === 'dieta') filtered = filtered.filter(a => a.modalidade && a.modalidade.includes('dieta'));
+  }
+  filtered.sort((a, b) => a.nome.localeCompare(b.nome));
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-title">Nenhum aluno encontrado</div><div class="empty-state-text">Tente outro filtro ou cadastre um novo aluno.</div><button class="btn btn-primary" id="btnNovoAlunoEmpty">+ Cadastrar Aluno</button></div>`;
+    document.querySelector('#btnNovoAlunoEmpty')?.addEventListener('click', () => abrirModalAluno());
+    return;
+  }
+  filtered.forEach(a => list.appendChild(buildAlunoCard(a)));
+}
+
+// ===== DETALHE ALUNO =====
+function abrirDetalhe(id) {
+  currentAlunoId = id;
+  const a = alunos.find(x => x.id === id);
+  if (!a) return;
+  $('viewAlunosList').style.display = 'none';
+  $('viewAlunoDetalhe').style.display = 'block';
+  renderDetalhe(a);
+}
+
+function renderDetalhe(a) {
+  const st = getStatus(a);
+  const d = $('detalheContent');
+
+  // Calcular dias para vencimento
+  let vencInfo = '—';
+  if (a.vencimento) {
+    const diff = diffDays(today(), a.vencimento);
+    if (diff < 0) vencInfo = `Vencido há ${Math.abs(diff)}d`;
+    else if (diff === 0) vencInfo = 'Vence hoje!';
+    else vencInfo = `Em ${diff} dias`;
+  }
+
+  // Histórico de pagamentos do aluno
+  const pagAluno = pagamentos.filter(p => p.alunoId === a.id).sort((x, y) => y.data.localeCompare(x.data));
+
+  d.innerHTML = `
+    <div class="detail-hero">
+      <div class="detail-avatar">${iniciais(a.nome)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="detail-name">${a.nome}</div>
+          <span class="status-badge ${st}">${statusLabel[st]}</span>
+          ${isBirthdayNear(a.nascimento) ? '<span class="birthday-badge">🎂 Aniversário</span>' : ''}
+        </div>
+        <div class="detail-sub">${a.modalidade || '—'} · ${a.objetivo || ''}</div>
+        <div class="detail-actions">
+          ${a.telefone ? `<button class="btn wa-btn btn-sm" id="btnDetWA">📱 WhatsApp</button>` : ''}
+          <button class="btn btn-ghost btn-sm" id="btnDetEdit">✏️ Editar</button>
+          <button class="btn btn-danger btn-sm" id="btnDetDel">🗑️ Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-block">
+        <div class="info-block-label">WhatsApp</div>
+        <div class="info-block-value" style="font-size:13px">${a.telefone || '—'}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-block-label">Instagram</div>
+        <div class="info-block-value" style="font-size:13px">${a.instagram || '—'}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-block-label">Nascimento</div>
+        <div class="info-block-value" style="font-size:13px">${fmt(a.nascimento)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-block-label">Valor do Plano</div>
+        <div class="info-block-value text-orange">${fmtMoeda(a.valor)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-block-label">Vencimento</div>
+        <div class="info-block-value ${st === 'vencido' ? 'text-red' : st === 'avencer' ? 'text-yellow' : 'text-green'}">${fmt(a.vencimento)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-block-label">Status prazo</div>
+        <div class="info-block-value" style="font-size:13px">${vencInfo}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-block-label">Pagamento</div>
+        <div class="info-block-value" style="font-size:13px">${a.formaPagto || '—'}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-block-label">Periodicidade</div>
+        <div class="info-block-value" style="font-size:13px">${a.periodicidade || '—'}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-block-label">Início</div>
+        <div class="info-block-value" style="font-size:13px">${fmt(a.inicio)}</div>
+      </div>
+    </div>
+
+    <div class="section-header"><div class="section-title">📅 Acompanhamento</div></div>
+    <div class="check-grid" id="checkGrid"></div>
+
+    <div class="section-header mt-12"><div class="section-title">📝 Notas do Aluno</div>
+      <button class="btn btn-ghost btn-sm" id="btnEditarNotas">✏️ Editar</button>
+    </div>
+    <div class="nota-box">
+      ${a.notas ? `<div class="nota-text">${a.notas}</div>` : '<div class="nota-text nota-empty">Nenhuma nota cadastrada.</div>'}
+    </div>
+
+    <div class="section-header mt-12">
+      <div class="section-title">💰 Histórico de Pagamentos</div>
+      <button class="btn btn-green btn-sm" id="btnDetPagto">+ Registrar</button>
+    </div>
+    <div id="detPagtoList" class="pagto-list">
+      ${pagAluno.length ? pagAluno.map(p => `
+        <div class="pagto-item">
+          <div class="pagto-dot" style="background:var(--green)"></div>
+          <div class="pagto-info">
+            <div class="pagto-date">${fmt(p.data)}</div>
+            <div class="pagto-ref">${p.referencia || ''} · ${p.forma || ''} ${p.obs ? '· ' + p.obs : ''}</div>
+          </div>
+          <div class="pagto-valor">${fmtMoeda(p.valor)}</div>
+          <button class="btn btn-danger btn-sm btn-icon del-pagto" data-id="${p.id}">✕</button>
+        </div>
+      `).join('') : '<div style="color:var(--text3);font-size:13px;padding:8px 0">Nenhum pagamento registrado.</div>'}
+    </div>
+  `;
+
+  // Acompanhamento
+  const grid = d.querySelector('#checkGrid');
+  ACOMP_TIPOS.forEach(tipo => {
+    const dtKey = tipo.key;
+    const dt = a[dtKey];
+    const diffD = dt ? diffDays(dt, today()) : null;
+    const atrasado = diffD !== null && diffD > tipo.dias;
+    const item = document.createElement('div');
+    item.className = 'check-item' + (atrasado ? ' atrasado' : '');
+
+    let dateClass = 'none', dateText = 'Nunca';
+    if (dt) {
+      if (diffD <= tipo.dias * 0.5) { dateClass = 'ok'; dateText = `Há ${diffD}d`; }
+      else if (diffD <= tipo.dias) { dateClass = 'warning'; dateText = `Há ${diffD}d`; }
+      else { dateClass = 'danger'; dateText = `Há ${diffD}d ⚠️`; }
+    }
+
+    item.innerHTML = `
+      <button class="check-btn" data-key="${dtKey}">✓ Agora</button>
+      <div class="check-item-icon">${tipo.icon}</div>
+      <div class="check-item-label">${tipo.label}</div>
+      <div class="check-item-date ${dateClass}">${dateText}</div>
+    `;
+    item.addEventListener('click', () => abrirModalAcomp(dtKey, tipo.label, a.id));
+    grid.appendChild(item);
+  });
+
+  // Ações
+  d.querySelector('#btnDetEdit')?.addEventListener('click', () => abrirModalAluno(a));
+  d.querySelector('#btnDetWA')?.addEventListener('click', () => {
+    const tmpl = getStatus(a) === 'vencido' ? 'vencido' : getStatus(a) === 'avencer' ? 'renovacao' : 'checkin';
+    abrirModalWA(a, tmpl);
+  });
+  d.querySelector('#btnDetPagto')?.addEventListener('click', () => {
+    abrirModalPagto(a.id);
+  });
+  d.querySelector('#btnDetDel')?.addEventListener('click', () => {
+    confirm(`Excluir ${a.nome}? Esta ação não pode ser desfeita.`, async () => {
+      await dbDelete('alunos', a.id);
+      alunos = alunos.filter(x => x.id !== a.id);
+      toast('Aluno excluído.');
+      voltarLista();
+      renderAll();
+    });
+  });
+  d.querySelector('#btnEditarNotas')?.addEventListener('click', () => abrirModalAluno(a, true));
+  d.querySelectorAll('.del-pagto').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      confirm('Excluir este pagamento?', async () => {
+        await dbDelete('pagamentos', btn.dataset.id);
+        pagamentos = pagamentos.filter(p => p.id !== btn.dataset.id);
+        toast('Pagamento removido.');
+        renderDetalhe(a);
+        renderFinanceiro();
+      });
+    });
+  });
+}
+
+function voltarLista() {
+  $('viewAlunosList').style.display = '';
+  $('viewAlunoDetalhe').style.display = 'none';
+  currentAlunoId = null;
+}
+$('btnVoltarLista').addEventListener('click', voltarLista);
+
+// ===== MODAL ALUNO =====
+function abrirModalAluno(a = null, focusNotas = false) {
+  editAlunoId = a ? a.id : null;
+  $('modalAlunoTitle').textContent = a ? 'Editar Aluno' : 'Novo Aluno';
+  $('fNome').value = a?.nome || '';
+  $('fTelefone').value = a?.telefone || '';
+  $('fInstagram').value = a?.instagram || '';
+  $('fNascimento').value = a?.nascimento || '';
+  $('fObjetivo').value = a?.objetivo || '';
+  $('fModalidade').value = a?.modalidade || '';
+  $('fValor').value = a?.valor || '';
+  $('fPeriodicidade').value = a?.periodicidade || 'mensal';
+  $('fInicio').value = a?.inicio || today();
+  $('fVencimento').value = a?.vencimento || '';
+  $('fFormaPagto').value = a?.formaPagto || '';
+  $('fAtivo').checked = a ? a.ativo : true;
+  $('fNotas').value = a?.notas || '';
+  openModal('modalAluno');
+  if (focusNotas) setTimeout(() => $('fNotas').focus(), 400);
+}
+
+['btnFecharModalAluno', 'btnCancelarAluno'].forEach(id => $$(id)?.addEventListener('click', () => closeModal('modalAluno')));
+function $$(id) { return $(id); }
+
+$('btnNovoAluno').addEventListener('click', () => abrirModalAluno());
+
+$('btnSalvarAluno').addEventListener('click', async () => {
+  const nome = $('fNome').value.trim();
+  const tel = $('fTelefone').value.trim();
+  if (!nome) { toast('Informe o nome do aluno.', 'error'); return; }
+
+  setSave('saving');
+  const aluno = {
+    id: editAlunoId || Date.now().toString(),
+    nome,
+    telefone: tel,
+    instagram: $('fInstagram').value.trim(),
+    nascimento: $('fNascimento').value,
+    objetivo: $('fObjetivo').value,
+    modalidade: $('fModalidade').value,
+    valor: $('fValor').value,
+    periodicidade: $('fPeriodicidade').value,
+    inicio: $('fInicio').value,
+    vencimento: $('fVencimento').value,
+    formaPagto: $('fFormaPagto').value,
+    ativo: $('fAtivo').checked,
+    notas: $('fNotas').value.trim(),
+    // preservar acompanhamento se edição
+    ...( editAlunoId ? (() => {
+      const ex = alunos.find(a => a.id === editAlunoId) || {};
+      const keep = {};
+      ACOMP_TIPOS.forEach(t => { if (ex[t.key]) keep[t.key] = ex[t.key]; });
+      return keep;
+    })() : {} )
+  };
+
+  await dbPut('alunos', aluno);
+  if (editAlunoId) {
+    alunos = alunos.map(a => a.id === editAlunoId ? aluno : a);
+  } else {
+    alunos.push(aluno);
+  }
+  setSave('saved');
+  toast(editAlunoId ? 'Aluno atualizado!' : 'Aluno cadastrado!');
+  closeModal('modalAluno');
+  if (currentAlunoId === editAlunoId) renderDetalhe(aluno);
+  renderAll();
+});
+
+// ===== MODAL ACOMPANHAMENTO =====
+function abrirModalAcomp(key, label, alunoId) {
+  currentAcompKey = key;
+  currentAcompAlunoId = alunoId;
+  $('modalAcompTitle').textContent = `Atualizar — ${label}`;
+  $('acompData').value = today();
+  $('acompObs').value = '';
+  openModal('modalAcomp');
+}
+$('btnFecharModalAcomp').addEventListener('click', () => closeModal('modalAcomp'));
+$('btnCancelarAcomp').addEventListener('click', () => closeModal('modalAcomp'));
+$('btnSalvarAcomp').addEventListener('click', async () => {
+  const a = alunos.find(x => x.id === currentAcompAlunoId);
+  if (!a) return;
+  a[currentAcompKey] = $('acompData').value;
+  const obsKey = currentAcompKey + 'Obs';
+  if ($('acompObs').value) a[obsKey] = $('acompObs').value;
+  setSave('saving');
+  await dbPut('alunos', a);
+  setSave('saved');
+  toast('Atualizado!');
+  closeModal('modalAcomp');
+  if (currentAlunoId === a.id) renderDetalhe(a);
+  renderDashboard();
+});
+
+// ===== MODAL WA =====
+function abrirModalWA(a, tmplId) {
+  waCurrentAluno = a;
+  const tmpl = TEMPLATES.find(t => t.id === tmplId);
+  const titulo = tmpl ? tmpl.title : 'Mensagem';
+  $('modalWATitle').textContent = `💬 ${titulo}`;
+  const msg = tmpl ? tmpl.body(a) : '';
+  $('waMsg').value = msg;
+  const tel = (a.telefone || '').replace(/\D/g, '');
+  const link = `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
+  $('btnEnviarWA').href = link;
+  openModal('modalWA');
+  $('waMsg').addEventListener('input', () => {
+    const m = $('waMsg').value;
+    const t2 = (a.telefone || '').replace(/\D/g, '');
+    $('btnEnviarWA').href = `https://wa.me/55${t2}?text=${encodeURIComponent(m)}`;
+  }, { once: false });
+}
+$('btnFecharModalWA').addEventListener('click', () => closeModal('modalWA'));
+$('btnCancelarWA').addEventListener('click', () => closeModal('modalWA'));
+
+// ===== MODAL PAGAMENTO =====
+function abrirModalPagto(alunoIdPresel = null) {
+  // Preencher select de alunos
+  const sel = $('pAluno');
+  sel.innerHTML = alunos.filter(a => a.ativo).sort((a, b) => a.nome.localeCompare(b.nome)).map(a =>
+    `<option value="${a.id}" ${a.id === alunoIdPresel ? 'selected' : ''}>${a.nome}</option>`
+  ).join('');
+  $('pData').value = today();
+  // Autopreenchimento de valor pelo aluno selecionado
+  const autoFill = () => {
+    const al = alunos.find(x => x.id === $('pAluno').value);
+    if (al?.valor) $('pValor').value = al.valor;
+    if (al?.formaPagto) $('pForma').value = al.formaPagto;
+    const mes = new Date().toLocaleString('pt-BR', { month: 'long' });
+    const ano = new Date().getFullYear();
+    $('pRef').value = mes.charAt(0).toUpperCase() + mes.slice(1) + '/' + ano;
+  };
+  sel.addEventListener('change', autoFill);
+  autoFill();
+  $('pObs').value = '';
+  $('pRenovar').checked = true;
+  openModal('modalPagto');
+}
+$('btnRegPagto').addEventListener('click', () => abrirModalPagto());
+$('btnFecharModalPagto').addEventListener('click', () => closeModal('modalPagto'));
+$('btnCancelarPagto').addEventListener('click', () => closeModal('modalPagto'));
+
+$('btnSalvarPagto').addEventListener('click', async () => {
+  const alunoId = $('pAluno').value;
+  const data = $('pData').value;
+  const valor = $('pValor').value;
+  if (!alunoId || !data || !valor) { toast('Preencha os campos obrigatórios.', 'error'); return; }
+
+  setSave('saving');
+  const pagto = {
+    id: Date.now().toString(),
+    alunoId,
+    data,
+    valor,
+    referencia: $('pRef').value,
+    forma: $('pForma').value,
+    obs: $('pObs').value,
+  };
+  await dbPut('pagamentos', pagto);
+  pagamentos.push(pagto);
+
+  // Renovar vencimento
+  if ($('pRenovar').checked) {
+    const a = alunos.find(x => x.id === alunoId);
+    if (a) {
+      const periodos = { mensal: 30, bimestral: 60, trimestral: 90, semestral: 180, anual: 365 };
+      const dias = periodos[a.periodicidade] || 30;
+      const base = a.vencimento && diffDays(today(), a.vencimento) > 0 ? a.vencimento : today();
+      const novaData = new Date(base + 'T12:00:00');
+      novaData.setDate(novaData.getDate() + dias);
+      a.vencimento = novaData.toISOString().slice(0, 10);
+      await dbPut('alunos', a);
+      alunos = alunos.map(x => x.id === a.id ? a : x);
+    }
+  }
+
+  setSave('saved');
+  toast('Pagamento registrado!');
+  closeModal('modalPagto');
+  if (currentAlunoId === alunoId) {
+    const a = alunos.find(x => x.id === alunoId);
+    if (a) renderDetalhe(a);
+  }
+  renderAll();
+});
+
+// ===== RENDER FINANCEIRO =====
+function renderFinanceiro() {
+  const sel = $('finMes');
+  // Preencher meses disponíveis
+  const meses = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const lbl = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+    meses.push({ val, lbl });
+  }
+  if (!sel.options.length) {
+    meses.forEach(m => {
+      const o = document.createElement('option');
+      o.value = m.val; o.textContent = m.lbl.charAt(0).toUpperCase() + m.lbl.slice(1);
+      sel.appendChild(o);
+    });
+  }
+
+  const mesSel = sel.value || meses[0].val;
+  const pagMes = pagamentos.filter(p => p.data.slice(0, 7) === mesSel);
+  const totalMes = pagMes.reduce((s, p) => s + Number(p.valor), 0);
+  const ativos = alunos.filter(a => a.ativo);
+  const receitaPotencial = ativos.reduce((s, a) => s + (Number(a.valor) || 0), 0);
+  const vencidos = alunos.filter(a => getStatus(a) === 'vencido').length;
+
+  $('finSummary').innerHTML = `
+    <div class="stat-card highlight">
+      <div class="stat-number" style="font-size:20px">R$ ${totalMes.toFixed(2).replace('.', ',')}</div>
+      <div class="stat-label">Recebido no mês</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="font-size:20px">R$ ${receitaPotencial.toFixed(2).replace('.', ',')}</div>
+      <div class="stat-label">Potencial mensal</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">${pagMes.length}</div>
+      <div class="stat-label">Pagamentos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number text-red">${vencidos}</div>
+      <div class="stat-label">Inadimplentes</div>
+    </div>
+  `;
+
+  // Lista
+  const list = $('pagtoList');
+  list.innerHTML = '';
+  if (!pagMes.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0">Nenhum pagamento registrado neste mês.</div>';
+    return;
+  }
+  pagMes.sort((a, b) => b.data.localeCompare(a.data)).forEach(p => {
+    const al = alunos.find(x => x.id === p.alunoId);
+    const item = document.createElement('div');
+    item.className = 'pagto-item';
+    item.innerHTML = `
+      <div class="pagto-dot" style="background:var(--green)"></div>
+      <div class="pagto-info">
+        <div class="pagto-date">${al?.nome || 'Aluno removido'} · ${fmt(p.data)}</div>
+        <div class="pagto-ref">${p.referencia || ''} · ${p.forma || ''} ${p.obs ? '· ' + p.obs : ''}</div>
+      </div>
+      <div class="pagto-valor">${fmtMoeda(p.valor)}</div>
+      <button class="btn btn-danger btn-sm btn-icon del-pagto-fin" data-id="${p.id}">✕</button>
+    `;
+    item.querySelector('.del-pagto-fin').addEventListener('click', async () => {
+      confirm('Excluir este pagamento?', async () => {
+        await dbDelete('pagamentos', p.id);
+        pagamentos = pagamentos.filter(x => x.id !== p.id);
+        toast('Removido.');
+        renderFinanceiro();
+        renderDashboard();
+      });
+    });
+    list.appendChild(item);
+  });
+}
+$('finMes').addEventListener('change', renderFinanceiro);
+
+// ===== RENDER TEMPLATES =====
+function renderTemplates() {
+  const list = $('templatesList');
+  list.innerHTML = '';
+  TEMPLATES.forEach(tmpl => {
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    // Exemplo com primeiro aluno ativo
+    const ex = alunos.find(a => a.ativo) || { nome: 'Aluno Exemplo', vencimento: today(), valor: '150', modalidade: 'Treino', formaPagto: 'PIX', telefone: '11999999999' };
+    const preview = tmpl.body(ex);
+    card.innerHTML = `
+      <div class="template-title">${tmpl.icon} ${tmpl.title}</div>
+      <div class="template-body">${preview}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select class="tmpl-aluno-sel" style="flex:1;min-width:120px;padding:7px 10px;font-size:12px">
+          ${alunos.filter(a => a.ativo).sort((a, b) => a.nome.localeCompare(b.nome)).map(a =>
+            `<option value="${a.id}">${a.nome}</option>`
+          ).join('')}
+        </select>
+        <button class="wa-btn tmpl-send-btn" data-tmpl="${tmpl.id}">📱 Enviar</button>
+      </div>
+    `;
+    const sendBtn = card.querySelector('.tmpl-send-btn');
+    sendBtn.addEventListener('click', () => {
+      const alunoId = card.querySelector('.tmpl-aluno-sel').value;
+      const al = alunos.find(x => x.id === alunoId);
+      if (!al) { toast('Selecione um aluno.', 'error'); return; }
+      abrirModalWA(al, tmpl.id);
+    });
+    list.appendChild(card);
+  });
+  if (!alunos.filter(a => a.ativo).length) {
+    list.insertAdjacentHTML('afterbegin', '<div style="color:var(--text3);font-size:13px;margin-bottom:16px">Cadastre alunos ativos para usar as mensagens.</div>');
+  }
+}
+
+// ===== RENDER ALL =====
+function renderAll() {
+  renderDashboard();
+  renderAlunos();
+  renderFinanceiro();
+  renderTemplates();
+}
+
+// ===== NAV =====
+$('navTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.nav-tab');
+  if (!tab) return;
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  tab.classList.add('active');
+  $('view-' + tab.dataset.view).classList.add('active');
+  // Resetar detalhe
+  if (tab.dataset.view === 'alunos') { voltarLista(); renderAlunos(); }
+  if (tab.dataset.view === 'financeiro') renderFinanceiro();
+  if (tab.dataset.view === 'templates') renderTemplates();
+});
+
+// ===== SEARCH & FILTER =====
+$('searchInput').addEventListener('input', e => {
+  currentSearch = e.target.value;
+  renderAlunos();
+});
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilter = chip.dataset.filter;
+    renderAlunos();
+  });
+});
+
+// ===== CLOSE MODALS ON OVERLAY CLICK =====
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// ===== SERVICE WORKER =====
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ===== INIT =====
+(async () => {
+  await initDB();
+  await loadAll();
+  renderAll();
+})();
+</script>
+</body>
+</html>
