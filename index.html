@@ -698,7 +698,7 @@
     <div class="header-logo">⭐</div>
     <div>
       <div class="header-title">MG COACH</div>
-      <div class="header-subtitle">Organizer v1.1.0</div>
+      <div class="header-subtitle">Organizer v1.2.0</div>
     </div>
   </div>
   <div class="header-meta">
@@ -894,6 +894,16 @@
     </div>
     <div class="modal-body">
       <div class="section-label">Dados Pessoais</div>
+      <div class="field" style="border:1px solid var(--orange,#ff6b1a);border-radius:12px;padding:12px;background:rgba(255,107,26,0.08);margin-bottom:14px;">
+        <label style="color:var(--orange,#ff6b1a);font-weight:700;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;">★ Aluno (compartilhado entre os 3 apps)</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+          <select id="comumSeletor" onchange="aoEscolherPessoa()" style="flex:1;">
+            <option value="">— Escolher aluno cadastrado / criar novo abaixo —</option>
+          </select>
+          <button type="button" onclick="vincularPessoaAtual()" style="flex:0 0 auto;background:var(--orange,#ff6b1a);color:#1a1a1a;border:none;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;white-space:nowrap;">💾 Salvar</button>
+        </div>
+        <div style="font-size:0.68rem;color:var(--text-3,#999);margin-top:6px;">Escolha um aluno do NUTRI/TRAIN (preenche nome, telefone, nascimento) ou cadastre aqui para compartilhar.</div>
+      </div>
       <div class="field">
         <label>Nome completo *</label>
         <input type="text" id="fNome" placeholder="Nome do aluno" autocomplete="off">
@@ -1168,6 +1178,81 @@ function initDB() {
     req.onsuccess = e => { db = e.target.result; res(); };
     req.onerror = () => rej(req.error);
   });
+}
+
+// ============================================================
+// CADASTRO COMPARTILHADO (v1.2) — banco comum entre os 3 apps
+// ============================================================
+const COMUM_DB = 'mgcoach_comum';
+const COMUM_STORE = 'pessoas';
+let _comumDB = null;
+function comumDB() {
+  if (_comumDB) return Promise.resolve(_comumDB);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(COMUM_DB, 1);
+    req.onupgradeneeded = (ev) => {
+      const d = ev.target.result;
+      if (!d.objectStoreNames.contains(COMUM_STORE)) d.createObjectStore(COMUM_STORE, { keyPath: 'id' });
+    };
+    req.onsuccess = (ev) => { _comumDB = ev.target.result; resolve(_comumDB); };
+    req.onerror = () => reject(req.error);
+  });
+}
+async function comumOp(mode, fn) {
+  const cdb = await comumDB();
+  return new Promise((resolve, reject) => {
+    const tx = cdb.transaction(COMUM_STORE, mode);
+    const r = fn(tx.objectStore(COMUM_STORE));
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+async function listarPessoas() { try { return await comumOp('readonly', s => s.getAll()) || []; } catch (e) { return []; } }
+async function getPessoa(id) { try { return await comumOp('readonly', s => s.get(id)); } catch (e) { return null; } }
+async function salvarPessoa(p) {
+  if (!p.id) p.id = 'pessoa_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  p.atualizadoEm = new Date().toISOString();
+  await comumOp('readwrite', s => s.put(p));
+  return p;
+}
+async function popularSeletorPessoas() {
+  const sel = document.getElementById('comumSeletor');
+  if (!sel) return;
+  const pessoas = await listarPessoas();
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">— Escolher aluno cadastrado / criar novo abaixo —</option>';
+  pessoas.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  pessoas.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.nome || '(sem nome)'; sel.appendChild(o); });
+  if (atual) sel.value = atual;
+}
+// Organizer usa fNome / fTelefone / fNascimento
+async function aoEscolherPessoa() {
+  const sel = document.getElementById('comumSeletor');
+  if (!sel || !sel.value) return;
+  const p = await getPessoa(sel.value);
+  if (!p) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el != null && v != null) el.value = v; };
+  set('fNome', p.nome || '');
+  set('fTelefone', p.contato || '');
+  if (p.nascimento) set('fNascimento', p.nascimento);
+  if (typeof toast === 'function') toast('✓ Dados preenchidos de ' + (p.nome || 'aluno'));
+}
+async function vincularPessoaAtual() {
+  const g = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const nome = g('fNome');
+  if (!nome) { if (typeof toast === 'function') toast('Preencha o nome antes de salvar', 'error'); return; }
+  const sel = document.getElementById('comumSeletor');
+  // preserva sexo/altura se a pessoa já existir (Organizer não edita esses)
+  let base = {};
+  if (sel && sel.value) { const ex = await getPessoa(sel.value); if (ex) base = ex; }
+  const pessoa = Object.assign({}, base, {
+    id: (sel && sel.value) ? sel.value : null,
+    nome, contato: g('fTelefone'), nascimento: g('fNascimento') || base.nascimento || null
+  });
+  const salva = await salvarPessoa(pessoa);
+  await popularSeletorPessoas();
+  if (sel) sel.value = salva.id;
+  if (typeof toast === 'function') toast('★ Aluno salvo no cadastro compartilhado — aparece no NUTRI e TRAIN');
 }
 
 function dbAll(store) {
@@ -1721,6 +1806,12 @@ function abrirModalAluno(a = null, focusNotas = false) {
   $('fAtivo').checked = a ? a.ativo : true;
   $('fNotas').value = a?.notas || '';
   openModal('modalAluno');
+  popularSeletorPessoas().then(() => {
+    // se editando um aluno já vinculado, seleciona no dropdown
+    const sel = document.getElementById('comumSeletor');
+    if (sel && a && a.pessoaId) sel.value = a.pessoaId;
+    else if (sel) sel.value = '';
+  });
   if (focusNotas) setTimeout(() => $('fNotas').focus(), 400);
 }
 
@@ -1735,9 +1826,11 @@ $('btnSalvarAluno').addEventListener('click', async () => {
   if (!nome) { toast('Informe o nome do aluno.', 'error'); return; }
 
   setSave('saving');
+  const _selPessoa = document.getElementById('comumSeletor');
   const aluno = {
     id: editAlunoId || Date.now().toString(),
     nome,
+    pessoaId: (_selPessoa && _selPessoa.value) ? _selPessoa.value : (editAlunoId ? (alunos.find(a => a.id === editAlunoId)?.pessoaId || null) : null),
     telefone: tel,
     instagram: $('fInstagram').value.trim(),
     nascimento: $('fNascimento').value,
@@ -2111,7 +2204,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // ===== BACKUP & IMPORT =====
 function gerarBackup(apenasAlunos = false) {
   const payload = {
-    versao: '1.0.0',
+    versao: '1.2.0',
     app: 'mgcoach-organizer',
     exportadoEm: new Date().toISOString(),
     alunos,
